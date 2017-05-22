@@ -13,6 +13,7 @@ lto = true
 
 [dependencies]
 clap = "*"
+colored = "^1.5"
 error-chain = "*"
 futures = "*"
 git2 = "*"
