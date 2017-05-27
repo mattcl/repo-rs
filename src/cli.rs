@@ -41,7 +41,7 @@ pub fn get_matches<'a>(default_config_path: &'a str,
                                  .long("branch"))
                         .arg(Arg::with_name("remote")
                                  .help("The remote to sync with (will use the first listed remote \
-                                       if not specified)")
+                                       if not specified).")
                                  .takes_value(true)
                                  .required(false)
                                  .short("r")
@@ -49,17 +49,18 @@ pub fn get_matches<'a>(default_config_path: &'a str,
         .subcommand(SubCommand::with_name("untrack")
                         .about("stop tracking a repo")
                         .arg(Arg::with_name("key")
-                                 .help("The key of the repo to untrack")
+                                 .help("The key of the repo to untrack.")
                                  .index(1)
                                  .required(true)))
-        .subcommand(SubCommand::with_name("clone").about("clone a repo and start tracking it")
+        .subcommand(SubCommand::with_name("clone")
+                        .about("clone a repo and start tracking it")
                         .arg(Arg::with_name("url")
-                                 .help("The clone url of the repository to track")
+                                 .help("The clone url of the repository to track.")
                                  .index(1)
                                  .required(true))
                         .arg(Arg::with_name("key")
                                  .help("A unique identifier for the tracked repo (will use the \
-                                       repo directory name if not specified)")
+                                       repo directory name if not specified).")
                                  .takes_value(true)
                                  .required(false)
                                  .short("k")
@@ -74,7 +75,9 @@ pub fn get_matches<'a>(default_config_path: &'a str,
         .subcommand(SubCommand::with_name("pull")
                         .about("pull all tracked repos")
                         .arg(Arg::with_name("stash")
-                                 .help("stash any uncommitted changes prior to the merge",)
+                                 .help("Stash any uncommitted changes prior to the merge. \
+                                        If not specified, repos containing un-stashed changes \
+                                        will be skipped.")
                                  .short("s")
                                  .long("stash")));
     app.get_matches()

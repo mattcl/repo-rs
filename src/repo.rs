@@ -1,5 +1,5 @@
 use error::{Error, ErrorKind, Result};
-use git2::Repository;
+use git2::{Repository, RepositoryState};
 use std::path::Path;
 use std::process::Command;
 
@@ -18,19 +18,79 @@ impl Repo {
         RepoBuilder::new(path)
     }
 
+    pub fn init(&mut self) -> Result<()> {
+        self.repository = Some(Repository::discover(&self.path)?);
+        Ok(())
+    }
+
     // pub fn clone(url: &str, dest: &str, branch: &str) -> Result<Repo> {
     //     let repository = Repository::clone(url, dest)?;
     // }
 
-    pub fn pull(&self) -> Result<()> {
+    fn validate_working_state(&self) -> Result<()> {
         let repo = self.repository()?;
 
-        // check if dirty
+        match repo.state() {
+            RepositoryState::Clean => Ok(()),
+            _ => {
+                Err(format!("Repository '{}' has local git operations in progress",
+                            self.key)
+                            .into())
+            }
+        }
+    }
 
-        // stash
+    fn stash(&self) -> Result<()> {
+        let result = Command::new("git")
+            .current_dir(&self.path)
+            .arg("stash")
+            .status()?;
 
-        // switch to target branch
+        if !result.success() {
+            return Err(format!("Error performing `git stash` in '{}'. Command exited with {}",
+                               self.key,
+                               result.code().unwrap())
+                               .into());
+        }
 
+        Ok(())
+    }
+
+    fn stash_pop(&self) -> Result<()> {
+        let result = Command::new("git")
+            .current_dir(&self.path)
+            .arg("stash")
+            .status()?;
+
+        if !result.success() {
+            return Err(format!("Error performing `git stash` in '{}'. Command exited with {}",
+                               self.key,
+                               result.code().unwrap())
+                               .into());
+        }
+
+        Ok(())
+    }
+
+    fn checkout(&self, branch: &str) -> Result<()> {
+        let result = Command::new("git")
+            .current_dir(&self.path)
+            .arg("checkout")
+            .arg(&self.branch)
+            .status()?;
+
+        if !result.success() {
+            return Err(format!("Error switching to branch '{}' of '{}'. Command exited with {}",
+                               branch,
+                               self.key,
+                               result.code().unwrap())
+                               .into());
+        }
+
+        Ok(())
+    }
+
+    fn rebase(&self) -> Result<()> {
         // pull and rebase
         let result = Command::new("git")
             .current_dir(&self.path)
@@ -39,19 +99,56 @@ impl Repo {
             .status()?;
 
         if !result.success() {
-            return Err(format!("Error updating {}. Command exited with {}",
+            return Err(format!("Error running `git pull --rebase` in '{}': command exited with {}",
                                self.key,
                                result.code().unwrap())
                                .into());
         }
 
-        // switch back
+        Ok(())
+    }
+
+    pub fn update_repo(&self, allow_stash: bool) -> Result<()> {
+        // make sure there are no active merges/rebases/wahtever
+        self.validate_working_state()?;
+
+        // Find changes that would prevent us from rebasing or changing branches
+        let dirty = false;
+
+        // stash if necessary
+        if dirty && allow_stash {
+            self.stash()?;
+        }
+
+        // get current branch
+        let original_branch = "something";
+        let requires_branch_change = self.branch == original_branch.to_string();
+
+        // switch to target branch if necessary
+        if requires_branch_change {
+            self.checkout(&self.branch)?;
+        }
+
+        // pull and rebase
+        self.rebase()?;
+
+        // switch to the original branch if necessary
+        if requires_branch_change {
+            self.checkout(original_branch)?;
+        }
+
+        // undo the stash if necessary
+        if dirty && allow_stash {
+            self.stash_pop()?;
+        }
 
         Ok(())
     }
 
     fn repository<'a>(&'a self) -> Result<&'a Repository> {
-        self.repository.as_ref().ok_or("Invalid git repo or repository not initialized".into())
+        self.repository
+            .as_ref()
+            .ok_or("Invalid git repo or repository not initialized".into())
     }
 }
 

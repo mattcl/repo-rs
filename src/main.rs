@@ -83,10 +83,23 @@ fn main() {
             let key = subcmd.value_of("key").unwrap();
             if config.remove(&key) {
                 println!("Stopped tracking {}", key.white().bold());
-                config.save(&config_file)
+                config
+                    .save(&config_file)
                     .unwrap_or_exit("Error saving config");
             }
 
+        }
+        Some("pull") => {
+            let subcommand = matches.subcommand_matches("pull").unwrap();
+            let allow_stash = subcommand.is_present("stash");
+            for (key, repo) in &mut config.repos {
+                repo.init()
+                    .unwrap_or_exit(&format!("The repo corresponding to '{}' at '{} is invalid",
+                                            key,
+                                            repo.path));
+                repo.update_repo(allow_stash)
+                    .unwrap_or_exit(&format!("Could not pull '{}'", key));
+            }
         }
         _ => exit("not implemented"), // TODO: change to unreachable!()
     };
