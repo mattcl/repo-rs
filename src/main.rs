@@ -7,6 +7,7 @@ extern crate futures;
 extern crate git2;
 #[macro_use]
 extern crate prettytable;
+extern crate rayon;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
@@ -18,6 +19,7 @@ use std::path::Path;
 use colored::*;
 use config::Config;
 use error::{Result, UnwrapOrExit};
+use rayon::prelude::*;
 use repo::Repo;
 
 mod cli;
@@ -92,13 +94,31 @@ fn main() {
         Some("pull") => {
             let subcommand = matches.subcommand_matches("pull").unwrap();
             let allow_stash = subcommand.is_present("stash");
-            for (key, repo) in &mut config.repos {
-                repo.init()
-                    .unwrap_or_exit(&format!("The repo corresponding to '{}' at '{} is invalid",
-                                            key,
-                                            repo.path));
-                repo.update_repo(allow_stash)
-                    .unwrap_or_exit(&format!("Could not pull '{}'", key));
+            let count = config.repos.len();
+            let noun = match count {
+                1 => "repo",
+                _ => "repos",
+            };
+
+            println!("Attempting to update {} {}", count, noun);
+
+            let errors: Vec<Result<()>> = config
+                .repos
+                .par_iter_mut()
+                .map(|(key, repo)| -> Result<()> {
+                         let s = format!("Updating {}", key);
+                         println!("{}", s);
+                         repo.init().and_then(|_| repo.update_repo(allow_stash))
+                     })
+                .filter(|r| r.is_err())
+                .collect();
+
+            if !errors.is_empty() {
+                for e in errors {
+                    let error = e.err().unwrap();
+                    println!("{}", error);
+                }
+                exit("Not all repos could be updated");
             }
         }
         _ => exit("not implemented"), // TODO: change to unreachable!()

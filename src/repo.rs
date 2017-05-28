@@ -40,16 +40,25 @@ impl Repo {
         }
     }
 
+    fn is_dirty(&self) -> Result<bool> {
+        let repo = self.repository()?;
+        let index = repo.index()?;
+        Ok(repo.diff_index_to_workdir(Some(&index), None)
+               .map(|diff| diff.deltas().count() != 0)
+               .unwrap_or(false))
+    }
+
     fn stash(&self) -> Result<()> {
         let result = Command::new("git")
             .current_dir(&self.path)
             .arg("stash")
-            .status()?;
+            .output()?;
 
-        if !result.success() {
-            return Err(format!("Error performing `git stash` in '{}'. Command exited with {}",
+        if !result.status.success() {
+            return Err(format!("Error performing `git stash` in '{}': {}",
                                self.key,
-                               result.code().unwrap())
+                               String::from_utf8(result.stderr)
+                                   .expect("Output contains invalid utf-8"))
                                .into());
         }
 
@@ -60,30 +69,41 @@ impl Repo {
         let result = Command::new("git")
             .current_dir(&self.path)
             .arg("stash")
-            .status()?;
+            .arg("pop")
+            .output()?;
 
-        if !result.success() {
-            return Err(format!("Error performing `git stash` in '{}'. Command exited with {}",
+        if !result.status.success() {
+            return Err(format!("Error performing `git stash pop` in '{}': {}",
                                self.key,
-                               result.code().unwrap())
+                               String::from_utf8(result.stderr)
+                                   .expect("Output contains invalid utf-8"))
                                .into());
         }
 
         Ok(())
     }
 
+    fn current_branch(&self) -> Result<String> {
+        let repo = self.repository()?;
+        let head = repo.head()?;
+        head.shorthand()
+            .and_then(|b| Some(b.to_string()))
+            .ok_or(format!("Could not determine current branch for '{}'", self.key).into())
+    }
+
     fn checkout(&self, branch: &str) -> Result<()> {
         let result = Command::new("git")
             .current_dir(&self.path)
             .arg("checkout")
-            .arg(&self.branch)
-            .status()?;
+            .arg(branch)
+            .output()?;
 
-        if !result.success() {
-            return Err(format!("Error switching to branch '{}' of '{}'. Command exited with {}",
+        if !result.status.success() {
+            return Err(format!("Error switching to branch '{}' of '{}': {}",
                                branch,
                                self.key,
-                               result.code().unwrap())
+                               String::from_utf8(result.stderr)
+                                   .expect("Output contains invalid utf-8"))
                                .into());
         }
 
@@ -96,12 +116,13 @@ impl Repo {
             .current_dir(&self.path)
             .arg("pull")
             .arg("--rebase")
-            .status()?;
+            .output()?;
 
-        if !result.success() {
-            return Err(format!("Error running `git pull --rebase` in '{}': command exited with {}",
+        if !result.status.success() {
+            return Err(format!("Error running `git pull --rebase` in '{}': {}",
                                self.key,
-                               result.code().unwrap())
+                               String::from_utf8(result.stderr)
+                                   .expect("Output contains invalid utf-8"))
                                .into());
         }
 
@@ -113,16 +134,22 @@ impl Repo {
         self.validate_working_state()?;
 
         // Find changes that would prevent us from rebasing or changing branches
-        let dirty = false;
+        let dirty = self.is_dirty()?;
 
         // stash if necessary
-        if dirty && allow_stash {
-            self.stash()?;
+        if dirty {
+            if allow_stash {
+                self.stash()?;
+            } else {
+                return Err(format!("Repo '{}' is dirty, attempt with --stash option?", self.key)
+                               .into());
+            }
         }
 
         // get current branch
-        let original_branch = "something";
-        let requires_branch_change = self.branch == original_branch.to_string();
+        let original_branch = self.current_branch()?;
+        println!("{}", original_branch);
+        let requires_branch_change = self.branch != original_branch;
 
         // switch to target branch if necessary
         if requires_branch_change {
@@ -134,7 +161,7 @@ impl Repo {
 
         // switch to the original branch if necessary
         if requires_branch_change {
-            self.checkout(original_branch)?;
+            self.checkout(&original_branch)?;
         }
 
         // undo the stash if necessary
