@@ -13,12 +13,12 @@ error_chain! {
         Json(SerdeError);
     }
 
-    errors {
-        RepoEmpty {
-            description("repo is empty")
-            display("repo is empty")
-        }
-    }
+    // errors {
+    //     RepoEmpty {
+    //         description("repo is empty")
+    //         display("repo is empty")
+    //     }
+    // }
 }
 
 pub trait UnwrapOrExit<T>

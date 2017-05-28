@@ -4,12 +4,10 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use prettytable::Table;
-use prettytable::row::Row;
-use prettytable::cell::Cell;
 use prettytable::format;
 use serde_json;
 
-use error::{Error, ErrorKind, Result};
+use error::Result;
 use repo::Repo;
 
 #[derive(Serialize, Deserialize)]
@@ -60,7 +58,7 @@ impl Config {
     pub fn save(&self, path: &Path) -> Result<()> {
         let json = serde_json::to_vec_pretty(&self)?;
         let mut file = File::create(path)?;
-        file.write_all(&json);
+        file.write_all(&json)?;
         Ok(())
     }
 }

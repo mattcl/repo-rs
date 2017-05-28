@@ -1,4 +1,4 @@
-use error::{Error, ErrorKind, Result};
+use error::Result;
 use git2::{Repository, RepositoryState};
 use std::path::Path;
 use std::process::Command;
@@ -148,7 +148,6 @@ impl Repo {
 
         // get current branch
         let original_branch = self.current_branch()?;
-        println!("{}", original_branch);
         let requires_branch_change = self.branch != original_branch;
 
         // switch to target branch if necessary
