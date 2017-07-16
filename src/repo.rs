@@ -178,6 +178,12 @@ impl Repo {
     }
 }
 
+impl PartialEq for Repo {
+    fn eq(&self, other: &Repo) -> bool {
+        self.key == other.key || self.path == other.path
+    }
+}
+
 pub struct RepoBuilder {
     pub key: Option<String>,
     pub path: String,
@@ -225,12 +231,13 @@ impl RepoBuilder {
             self.path = real_path;
         }
 
+        let p = self.path.clone();
+        let path = Path::new(&p);
 
         if self.key.is_none() {
             // attempt to derive key from repo path
             self.key = Some(path.file_name().unwrap().to_str().unwrap().to_owned());
         }
-
 
         if self.remote.is_none() {
             // use the first remote you can find
@@ -248,5 +255,41 @@ impl RepoBuilder {
                branch: self.branch.clone(),
                repository: Some(repository),
            })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Repo;
+
+    #[test]
+    fn equality() {
+        let repo1 = Repo {
+            key: "foo".to_string(),
+            path: "bar".to_string(),
+            remote: "baz".to_string(),
+            branch: "fez".to_string(),
+            repository: None,
+        };
+
+        let repo2 = Repo {
+            key: "foo".to_string(),
+            path: "hoof".to_string(),
+            remote: "herp".to_string(),
+            branch: "derp".to_string(),
+            repository: None,
+        };
+
+        let repo3 = Repo {
+            key: "doof".to_string(),
+            path: "bar".to_string(),
+            remote: "herp1".to_string(),
+            branch: "derp1".to_string(),
+            repository: None,
+        };
+
+        assert_eq!(true, repo1 == repo2);
+        assert_eq!(true, repo1 == repo3);
+        assert_eq!(false, repo2 == repo3);
     }
 }

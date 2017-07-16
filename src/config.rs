@@ -47,8 +47,12 @@ impl Config {
         table.print_tty(true);
     }
 
-    pub fn add(&mut self, repo: Repo) {
-        self.repos.insert(repo.key.clone(), repo);
+    pub fn add(&mut self, candidate: Repo) {
+        self.repos.insert(candidate.key.clone(), candidate);
+    }
+
+    pub fn contains(&self, candidate: &Repo) -> bool {
+        self.repos.values().any(|v| v == candidate)
     }
 
     pub fn remove(&mut self, key: &str) -> bool {

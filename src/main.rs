@@ -68,16 +68,19 @@ fn main() {
             builder.branch(branch);
             let repo = builder.build().unwrap_or_exit("Error tracking repository");
 
-            println!("Tracking branch '{}' from remote '{}' of '{}' at '{}'",
-                     &repo.branch.white().bold(),
-                     &repo.remote.white().bold(),
-                     &repo.key.white().bold(),
-                     &repo.path.white().bold());
-
-            config.add(repo);
-            config
-                .save(&config_file)
-                .unwrap_or_exit("Error saving config");
+            if config.contains(&repo) {
+                exit("Repo is already being tracked")
+            } else {
+                println!("Tracking branch '{}' from remote '{}' of '{}' at '{}'",
+                         &repo.branch.white().bold(),
+                         &repo.remote.white().bold(),
+                         &repo.key.white().bold(),
+                         &repo.path.white().bold());
+                config.add(repo);
+                config
+                    .save(&config_file)
+                    .unwrap_or_exit("Error saving config");
+            }
         }
         Some("untrack") => {
             // The following two lines are safe because of the way clap validates params
@@ -106,7 +109,7 @@ fn main() {
                 .repos
                 .par_iter_mut()
                 .map(|(key, repo)| -> Result<()> {
-                         let s = format!("Updating {}", key);
+                         let s = format!("Updating {}", &key.white().bold());
                          println!("{}", s);
                          repo.init().and_then(|_| repo.update_repo(allow_stash))
                      })
