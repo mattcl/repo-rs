@@ -32,20 +32,21 @@ impl Repo {
 
         match repo.state() {
             RepositoryState::Clean => Ok(()),
-            _ => {
-                Err(format!("Repository '{}' has local git operations in progress",
-                            self.key)
-                            .into())
-            }
+            _ => Err(format!(
+                "Repository '{}' has local git operations in progress",
+                self.key
+            )
+            .into()),
         }
     }
 
     fn is_dirty(&self) -> Result<bool> {
         let repo = self.repository()?;
         let index = repo.index()?;
-        Ok(repo.diff_index_to_workdir(Some(&index), None)
-               .map(|diff| diff.deltas().count() != 0)
-               .unwrap_or(false))
+        Ok(repo
+            .diff_index_to_workdir(Some(&index), None)
+            .map(|diff| diff.deltas().count() != 0)
+            .unwrap_or(false))
     }
 
     fn stash(&self) -> Result<()> {
@@ -55,11 +56,12 @@ impl Repo {
             .output()?;
 
         if !result.status.success() {
-            return Err(format!("Error performing `git stash` in '{}': {}",
-                               self.key,
-                               String::from_utf8(result.stderr)
-                                   .expect("Output contains invalid utf-8"))
-                               .into());
+            return Err(format!(
+                "Error performing `git stash` in '{}': {}",
+                self.key,
+                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
+            )
+            .into());
         }
 
         Ok(())
@@ -73,11 +75,12 @@ impl Repo {
             .output()?;
 
         if !result.status.success() {
-            return Err(format!("Error performing `git stash pop` in '{}': {}",
-                               self.key,
-                               String::from_utf8(result.stderr)
-                                   .expect("Output contains invalid utf-8"))
-                               .into());
+            return Err(format!(
+                "Error performing `git stash pop` in '{}': {}",
+                self.key,
+                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
+            )
+            .into());
         }
 
         Ok(())
@@ -99,12 +102,13 @@ impl Repo {
             .output()?;
 
         if !result.status.success() {
-            return Err(format!("Error switching to branch '{}' of '{}': {}",
-                               branch,
-                               self.key,
-                               String::from_utf8(result.stderr)
-                                   .expect("Output contains invalid utf-8"))
-                               .into());
+            return Err(format!(
+                "Error switching to branch '{}' of '{}': {}",
+                branch,
+                self.key,
+                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
+            )
+            .into());
         }
 
         Ok(())
@@ -119,11 +123,12 @@ impl Repo {
             .output()?;
 
         if !result.status.success() {
-            return Err(format!("Error running `git pull --rebase` in '{}': {}",
-                               self.key,
-                               String::from_utf8(result.stderr)
-                                   .expect("Output contains invalid utf-8"))
-                               .into());
+            return Err(format!(
+                "Error running `git pull --rebase` in '{}': {}",
+                self.key,
+                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
+            )
+            .into());
         }
 
         Ok(())
@@ -141,8 +146,9 @@ impl Repo {
             if allow_stash {
                 self.stash()?;
             } else {
-                return Err(format!("Repo '{}' is dirty, attempt with --stash option?", self.key)
-                               .into());
+                return Err(
+                    format!("Repo '{}' is dirty, attempt with --stash option?", self.key).into(),
+                );
             }
         }
 
@@ -169,6 +175,25 @@ impl Repo {
         }
 
         Ok(())
+    }
+
+    pub fn run(&self, prog: &str, args: Vec<&str>) -> Result<std::process::Output> {
+        let mut cmd = Command::new(prog);
+        cmd.current_dir(&self.path).args(args);
+
+        let result = cmd.output()?;
+
+        if !result.status.success() {
+            return Err(format!(
+                "Error running `{:?}` in '{}': {}",
+                cmd,
+                self.key,
+                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
+            )
+            .into());
+        }
+
+        Ok(result)
     }
 
     fn repository<'a>(&'a self) -> Result<&'a Repository> {
@@ -224,8 +249,9 @@ impl RepoBuilder {
             let real_path = match repository.workdir() {
                 Some(p) => p.to_str().unwrap().to_string(),
                 None => {
-                    return Err("Path does not exist at or within a valid, non-empty git repo"
-                                   .into())
+                    return Err(
+                        "Path does not exist at or within a valid, non-empty git repo".into(),
+                    )
                 }
             };
             self.path = real_path;
@@ -249,12 +275,12 @@ impl RepoBuilder {
         }
 
         Ok(Repo {
-               key: self.key.unwrap().clone(),
-               path: self.path.clone(),
-               remote: self.remote.unwrap().clone(),
-               branch: self.branch.clone(),
-               repository: Some(repository),
-           })
+            key: self.key.unwrap().clone(),
+            path: self.path.clone(),
+            remote: self.remote.unwrap().clone(),
+            branch: self.branch.clone(),
+            repository: Some(repository),
+        })
     }
 }
 

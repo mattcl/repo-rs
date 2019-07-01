@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use prettytable::Table;
 use prettytable::format;
+use prettytable::Table;
 use serde_json;
 
 use error::Result;
@@ -19,8 +19,10 @@ impl Config {
     pub fn new(path: &Path) -> Result<Self> {
         // if the path doesn't exist, create the file first
         if !path.exists() {
-            println!("Config file not found at path \"{}\". Creating one.",
-                     path.to_str().unwrap_or("error displaying path"));
+            println!(
+                "Config file not found at path \"{}\". Creating one.",
+                path.to_str().unwrap_or("error displaying path")
+            );
             let mut new_config = File::create(path)?;
             new_config.write_all(b"{\"repos\": {}}")?;
         }

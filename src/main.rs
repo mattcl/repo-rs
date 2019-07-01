@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate clap;
 extern crate colored;
+extern crate dirs;
 #[macro_use]
 extern crate error_chain;
 extern crate futures;
@@ -24,8 +25,8 @@ use repo::Repo;
 
 mod cli;
 mod config;
-mod repo;
 mod error;
+mod repo;
 
 pub fn exit(message: &str) -> ! {
     let err = clap::Error::with_description(message, clap::ErrorKind::InvalidValue);
@@ -33,7 +34,7 @@ pub fn exit(message: &str) -> ! {
 }
 
 fn main() {
-    let default_config_path_raw = env::home_dir()
+    let default_config_path_raw = dirs::home_dir()
         .expect("could not determine home directory")
         .join(".repo-rs.json");
     let default_config_path = default_config_path_raw.to_str().unwrap();
@@ -71,11 +72,13 @@ fn main() {
             if config.contains(&repo) {
                 exit("Repo is already being tracked")
             } else {
-                println!("Tracking branch '{}' from remote '{}' of '{}' at '{}'",
-                         &repo.branch.white().bold(),
-                         &repo.remote.white().bold(),
-                         &repo.key.white().bold(),
-                         &repo.path.white().bold());
+                println!(
+                    "Tracking branch '{}' from remote '{}' of '{}' at '{}'",
+                    &repo.branch.white().bold(),
+                    &repo.remote.white().bold(),
+                    &repo.key.white().bold(),
+                    &repo.path.white().bold()
+                );
                 config.add(repo);
                 config
                     .save(&config_file)
@@ -92,11 +95,10 @@ fn main() {
                     .save(&config_file)
                     .unwrap_or_exit("Error saving config");
             }
-
         }
         Some("pull") => {
-            let subcommand = matches.subcommand_matches("pull").unwrap();
-            let allow_stash = subcommand.is_present("stash");
+            let subcmd = matches.subcommand_matches("pull").unwrap();
+            let allow_stash = subcmd.is_present("stash");
             let count = config.repos.len();
             let noun = match count {
                 1 => "repo",
@@ -109,10 +111,10 @@ fn main() {
                 .repos
                 .par_iter_mut()
                 .map(|(key, repo)| -> Result<()> {
-                         let s = format!("Updating {}", &key.white().bold());
-                         println!("{}", s);
-                         repo.init().and_then(|_| repo.update_repo(allow_stash))
-                     })
+                    let s = format!("Updating {}", &key.white().bold());
+                    println!("{}", s);
+                    repo.init().and_then(|_| repo.update_repo(allow_stash))
+                })
                 .filter(|r| r.is_err())
                 .collect();
 
@@ -123,6 +125,53 @@ fn main() {
                 }
                 exit("Not all repos could be updated");
             }
+        }
+        Some("run") => {
+            let subcmd = matches.subcommand_matches("run").unwrap();
+            let mut raw_cmd: Vec<&str> = subcmd.values_of("cmd").unwrap().collect();
+            let count = config.repos.len();
+            let noun = match count {
+                1 => "repo",
+                _ => "repos",
+            };
+
+            println!(
+                "Running `{}` in {} {}",
+                raw_cmd.clone().join(" "),
+                count,
+                noun
+            );
+
+            let args: Vec<&str> = raw_cmd.drain(1..).collect();
+            // this is safe, since we know we had at least one value
+            let prog = raw_cmd.pop().unwrap();
+
+            let output: Vec<Result<()>> = config
+                .repos
+                .par_iter_mut()
+                .map(|(key, repo)| -> Result<()> {
+                    let header = format!("{}", &key.green().bold());
+                    let result = repo.init().and_then(|_| repo.run(prog, args.clone()))?;
+                    println!(
+                        "{}\n{}",
+                        header,
+                        String::from_utf8(result.stdout).expect("Output contains invalid utf-8")
+                    );
+                    Ok(())
+                })
+                .collect();
+
+            let errors: Vec<Result<()>> = output.into_iter().filter(|r| r.is_err()).collect();
+
+            if !errors.is_empty() {
+                for e in errors {
+                    let error = e.err().unwrap();
+                    println!("{}", error);
+                }
+                exit("Not all commands succeeded");
+            }
+
+            println!("done")
         }
         _ => exit("not implemented"), // TODO: change to unreachable!()
     };

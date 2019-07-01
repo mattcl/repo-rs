@@ -12,8 +12,10 @@ name = "repo-rs"
 lto = true
 
 [dependencies]
+cfg-if = "0.1.9"
 clap = "*"
 colored = "^1.5"
+dirs = "2.0.1"
 error-chain = "*"
 futures = "*"
 git2 = "*"

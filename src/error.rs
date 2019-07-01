@@ -22,9 +22,12 @@ error_chain! {
 }
 
 pub trait UnwrapOrExit<T>
-    where Self: Sized
+where
+    Self: Sized,
 {
-    fn unwrap_or_else<F>(self, f: F) -> T where F: FnOnce() -> T;
+    fn unwrap_or_else<F>(self, f: F) -> T
+    where
+        F: FnOnce() -> T;
 
     fn unwrap_or_exit(self, message: &str) -> T {
         let err = clap::Error::with_description(message, clap::ErrorKind::InvalidValue);
@@ -34,7 +37,8 @@ pub trait UnwrapOrExit<T>
 
 impl<T> UnwrapOrExit<T> for Option<T> {
     fn unwrap_or_else<F>(self, f: F) -> T
-        where F: FnOnce() -> T
+    where
+        F: FnOnce() -> T,
     {
         self.unwrap_or_else(f)
     }
@@ -42,17 +46,19 @@ impl<T> UnwrapOrExit<T> for Option<T> {
 
 impl<T> UnwrapOrExit<T> for Result<T> {
     fn unwrap_or_else<F>(self, f: F) -> T
-        where F: FnOnce() -> T
+    where
+        F: FnOnce() -> T,
     {
         self.unwrap_or_else(|_| f())
     }
 
     fn unwrap_or_exit(self, message: &str) -> T {
         self.unwrap_or_else(|e| {
-                                let err =
-                                    clap::Error::with_description(&format!("{}: {}", message, e),
-                                                                  clap::ErrorKind::InvalidValue);
-                                err.exit()
-                            })
+            let err = clap::Error::with_description(
+                &format!("{}: {}", message, e),
+                clap::ErrorKind::InvalidValue,
+            );
+            err.exit()
+        })
     }
 }
