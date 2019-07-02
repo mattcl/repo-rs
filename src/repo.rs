@@ -1,7 +1,7 @@
 use error::Result;
 use git2::{Repository, RepositoryState};
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output};
 
 #[derive(Serialize, Deserialize)]
 pub struct Repo {
@@ -50,39 +50,12 @@ impl Repo {
     }
 
     fn stash(&self) -> Result<()> {
-        let result = Command::new("git")
-            .current_dir(&self.path)
-            .arg("stash")
-            .output()?;
-
-        if !result.status.success() {
-            return Err(format!(
-                "Error performing `git stash` in '{}': {}",
-                self.key,
-                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
-            )
-            .into());
-        }
-
+        self.run("git", vec!["stash"])?;
         Ok(())
     }
 
     fn stash_pop(&self) -> Result<()> {
-        let result = Command::new("git")
-            .current_dir(&self.path)
-            .arg("stash")
-            .arg("pop")
-            .output()?;
-
-        if !result.status.success() {
-            return Err(format!(
-                "Error performing `git stash pop` in '{}': {}",
-                self.key,
-                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
-            )
-            .into());
-        }
-
+        self.run("git", vec!["stash", "pop"])?;
         Ok(())
     }
 
@@ -95,42 +68,12 @@ impl Repo {
     }
 
     fn checkout(&self, branch: &str) -> Result<()> {
-        let result = Command::new("git")
-            .current_dir(&self.path)
-            .arg("checkout")
-            .arg(branch)
-            .output()?;
-
-        if !result.status.success() {
-            return Err(format!(
-                "Error switching to branch '{}' of '{}': {}",
-                branch,
-                self.key,
-                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
-            )
-            .into());
-        }
-
+        self.run("git", vec!["checkout", branch])?;
         Ok(())
     }
 
     fn rebase(&self) -> Result<()> {
-        // pull and rebase
-        let result = Command::new("git")
-            .current_dir(&self.path)
-            .arg("pull")
-            .arg("--rebase")
-            .output()?;
-
-        if !result.status.success() {
-            return Err(format!(
-                "Error running `git pull --rebase` in '{}': {}",
-                self.key,
-                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
-            )
-            .into());
-        }
-
+        self.run("git", vec!["pull", "--rebase"])?;
         Ok(())
     }
 
@@ -177,7 +120,7 @@ impl Repo {
         Ok(())
     }
 
-    pub fn run(&self, prog: &str, args: Vec<&str>) -> Result<std::process::Output> {
+    pub fn run(&self, prog: &str, args: Vec<&str>) -> Result<Output> {
         let mut cmd = Command::new(prog);
         cmd.current_dir(&self.path).args(args);
 

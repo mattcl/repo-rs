@@ -150,13 +150,28 @@ fn main() {
                 .repos
                 .par_iter_mut()
                 .map(|(key, repo)| -> Result<()> {
-                    let header = format!("{}", &key.green().bold());
                     let result = repo.init().and_then(|_| repo.run(prog, args.clone()))?;
-                    println!(
-                        "{}\n{}",
-                        header,
-                        String::from_utf8(result.stdout).expect("Output contains invalid utf-8")
-                    );
+                    if !result.stdout.is_empty() || !result.stderr.is_empty() {
+                        let mut output = format!("{}", &key.green().bold());
+
+                        if !result.stdout.is_empty() {
+                            output.push_str("\n");
+                            output.push_str(
+                                &String::from_utf8(result.stdout)
+                                    .expect("Output is not valid utf-8"),
+                            );
+                        }
+
+                        if !result.stderr.is_empty() {
+                            output.push_str("\n");
+                            output.push_str(
+                                &String::from_utf8(result.stderr)
+                                    .expect("Output is not valid utf-8"),
+                            );
+                        }
+
+                        println!("{}", output);
+                    }
                     Ok(())
                 })
                 .collect();
