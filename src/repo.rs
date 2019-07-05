@@ -49,9 +49,8 @@ impl Repo {
             .unwrap_or(false))
     }
 
-    fn stash(&self) -> Result<()> {
-        self.run("git", vec!["stash"])?;
-        Ok(())
+    fn stash(&self) -> Result<Output> {
+        self.run("git", vec!["stash"])
     }
 
     fn stash_pop(&self) -> Result<()> {
@@ -67,17 +66,41 @@ impl Repo {
             .ok_or(format!("Could not determine current branch for '{}'", self.key).into())
     }
 
-    fn checkout(&self, branch: &str) -> Result<()> {
-        self.run("git", vec!["checkout", branch])?;
-        Ok(())
+    fn checkout(&self, branch: &str) -> Result<Output> {
+        self.run("git", vec!["checkout", branch])
     }
 
-    fn rebase(&self) -> Result<()> {
-        self.run("git", vec!["pull", "--rebase"])?;
-        Ok(())
+    fn rebase(&self) -> Result<Output> {
+        self.run("git", vec!["pull", "--rebase"])
     }
 
-    pub fn update_repo(&self, allow_stash: bool) -> Result<()> {
+    pub fn run(&self, prog: &str, args: Vec<&str>) -> Result<Output> {
+        let mut cmd = Command::new(prog);
+        cmd.current_dir(&self.path).args(args);
+
+        let result = cmd.output()?;
+
+        if !result.status.success() {
+            return Err(format!(
+                "Error running `{:?}` in '{}': {}",
+                cmd,
+                self.key,
+                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
+            )
+            .into());
+        }
+
+        Ok(result)
+    }
+
+    pub fn status(&self, require_dirty: bool) -> Result<Option<Output>> {
+        if !require_dirty || self.is_dirty()? {
+            return Ok(Some(self.run("git", vec!["status"])?));
+        }
+        Ok(None)
+    }
+
+    pub fn update_repo(&self, allow_stash: bool) -> Result<Output> {
         // make sure there are no active merges/rebases/wahtever
         self.validate_working_state()?;
 
@@ -105,7 +128,7 @@ impl Repo {
         }
 
         // pull and rebase
-        self.rebase()?;
+        let output = self.rebase()?;
 
         // switch to the original branch if necessary
         if requires_branch_change {
@@ -117,26 +140,7 @@ impl Repo {
             self.stash_pop()?;
         }
 
-        Ok(())
-    }
-
-    pub fn run(&self, prog: &str, args: Vec<&str>) -> Result<Output> {
-        let mut cmd = Command::new(prog);
-        cmd.current_dir(&self.path).args(args);
-
-        let result = cmd.output()?;
-
-        if !result.status.success() {
-            return Err(format!(
-                "Error running `{:?}` in '{}': {}",
-                cmd,
-                self.key,
-                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
-            )
-            .into());
-        }
-
-        Ok(result)
+        Ok(output)
     }
 
     fn repository<'a>(&'a self) -> Result<&'a Repository> {

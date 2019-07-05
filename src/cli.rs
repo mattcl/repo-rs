@@ -20,7 +20,15 @@ pub fn get_matches<'a>(
                 .global(true),
         )
         .subcommand(SubCommand::with_name("list").about("lists tracked repos"))
-        .subcommand(SubCommand::with_name("status").about("gets status for tracked repos"))
+        .subcommand(
+            SubCommand::with_name("status")
+                .about("gets status for tracked repos")
+                .arg(Arg::with_name("all")
+                        .help(
+                            "Show status for all tracked repos, even if a repo is not dirty",
+                        )
+                        .short("a")
+                        .long("all")))
         .subcommand(
             SubCommand::with_name("track")
                 .about("track an existing repo")
@@ -75,36 +83,6 @@ pub fn get_matches<'a>(
                         .required(true),
                 ),
         )
-        .subcommand(
-            SubCommand::with_name("clone")
-                .about("clone a repo and start tracking it")
-                .arg(
-                    Arg::with_name("url")
-                        .help("The clone url of the repository to track.")
-                        .index(1)
-                        .required(true),
-                )
-                .arg(
-                    Arg::with_name("key")
-                        .help(
-                            "A unique identifier for the tracked repo (will use the \
-                             repo directory name if not specified).",
-                        )
-                        .takes_value(true)
-                        .required(false)
-                        .short("k")
-                        .long("key"),
-                )
-                .arg(
-                    Arg::with_name("branch")
-                        .help("The branch to track")
-                        .takes_value(true)
-                        .default_value("master")
-                        .short("b")
-                        .long("branch"),
-                ),
-        )
-        .subcommand(SubCommand::with_name("prune").about("prune merged/deleted branches"))
         .subcommand(
             SubCommand::with_name("pull")
                 .about("pull all tracked repos")
