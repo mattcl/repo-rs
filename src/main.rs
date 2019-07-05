@@ -16,6 +16,7 @@ extern crate tokio_core;
 
 use std::env;
 use std::path::Path;
+use std::process::Output;
 
 use clap::ArgMatches;
 use colored::*;
@@ -32,6 +33,52 @@ mod repo;
 pub fn exit(message: &str) -> ! {
     let err = clap::Error::with_description(message, clap::ErrorKind::InvalidValue);
     err.exit();
+}
+
+fn pluralize_repos(config: &mut Config) -> String {
+    let count = config.repos.len();
+    let noun = match count {
+        1 => "repo",
+        _ => "repos",
+    };
+    format!("{} {}", count, noun)
+}
+
+fn collect_output(header: String, result: Output) -> Option<String> {
+    if !result.stdout.is_empty() || !result.stderr.is_empty() {
+        let mut output = header;
+
+        if !result.stdout.is_empty() {
+            output.push_str("\n");
+            output.push_str(
+                &String::from_utf8(result.stdout.clone())
+                    .expect("Output is not valid utf-8"),
+            );
+        }
+
+        if !result.stderr.is_empty() {
+            output.push_str("\n");
+            output.push_str(
+                &String::from_utf8(result.stderr.clone())
+                    .expect("Output is not valid utf-8"),
+            );
+        }
+
+        return Some(output);
+    }
+    None
+}
+
+fn handle_errors(message: &str, results: Vec<Result<()>>) {
+    let errors: Vec<Result<()>> = results.into_iter().filter(|r| r.is_err()).collect();
+
+    if !errors.is_empty() {
+        for e in errors {
+            let error = e.err().unwrap();
+            println!("{}", error);
+        }
+        exit(message);
+    }
 }
 
 fn track(config: &mut Config, subcmd: &ArgMatches, config_file: &Path) {
@@ -82,13 +129,7 @@ fn untrack(config: &mut Config, subcmd: &ArgMatches, config_file: &Path) {
 }
 
 fn pull(config: &mut Config, allow_stash: bool) {
-    let count = config.repos.len();
-    let noun = match count {
-        1 => "repo",
-        _ => "repos",
-    };
-
-    println!("Attempting to update {} {}", count, noun);
+    println!("Attempting to update {}", pluralize_repos(config));
 
     let errors: Vec<Result<()>> = config
         .repos
@@ -112,99 +153,40 @@ fn pull(config: &mut Config, allow_stash: bool) {
 }
 
 fn run(config: &mut Config, raw_cmd: &mut Vec<&str>) {
-    let count = config.repos.len();
-    let noun = match count {
-        1 => "repo",
-        _ => "repos",
-    };
-
-    println!(
-        "Running `{}` in {} {}",
-        raw_cmd.clone().join(" "),
-        count,
-        noun
-    );
+    println!("Running `{}` in {}", raw_cmd.clone().join(" "), pluralize_repos(config));
 
     let args: Vec<&str> = raw_cmd.drain(1..).collect();
     // this is safe, since we know we had at least one value
     let prog = raw_cmd.pop().unwrap();
 
-    let output: Vec<Result<()>> = config
+    let results: Vec<Result<()>> = config
         .repos
         .par_iter_mut()
         .map(|(key, repo)| -> Result<()> {
             let result = repo.init().and_then(|_| repo.run(prog, args.clone()))?;
-            if !result.stdout.is_empty() || !result.stderr.is_empty() {
-                let mut output = format!("{}", &key.green().bold());
-
-                if !result.stdout.is_empty() {
-                    output.push_str("\n");
-                    output.push_str(
-                        &String::from_utf8(result.stdout)
-                            .expect("Output is not valid utf-8"),
-                    );
-                }
-
-                if !result.stderr.is_empty() {
-                    output.push_str("\n");
-                    output.push_str(
-                        &String::from_utf8(result.stderr)
-                            .expect("Output is not valid utf-8"),
-                    );
-                }
-
+            let header = format!("{}", &key.green().bold());
+            if let Some(output) = collect_output(header, result) {
                 println!("{}", output);
             }
             Ok(())
         })
         .collect();
 
-    let errors: Vec<Result<()>> = output.into_iter().filter(|r| r.is_err()).collect();
-
-    if !errors.is_empty() {
-        for e in errors {
-            let error = e.err().unwrap();
-            println!("{}", error);
-        }
-        exit("Not all commands succeeded");
-    }
+    handle_errors("Not all commands succeeded", results);
 
     println!("done")
 }
 
 fn status(config: &mut Config, all: bool) {
-    let count = config.repos.len();
-    let noun = match count {
-        1 => "repo",
-        _ => "repos",
-    };
+    println!("Getting status of {}", pluralize_repos(config));
 
-    println!("Getting status of {} {}", count, noun);
-
-    let output: Vec<Result<()>> = config
+    let results: Vec<Result<()>> = config
         .repos
         .par_iter_mut()
         .map(|(key, repo)| -> Result<()> {
             if let Some(result) = repo.init().and_then(|_| repo.status(!all))? {
-                if !result.stdout.is_empty() || !result.stderr.is_empty() {
-                    let mut output = format!("{}", &key.green().bold());
-
-                    if !result.stdout.is_empty() {
-                        output.push_str("\n");
-                        output.push_str(
-                            &String::from_utf8(result.stdout)
-                                .expect("Output is not valid utf-8"),
-                        );
-                    }
-
-                    if !result.stderr.is_empty() {
-                        output.push_str("\n");
-                        output.push_str(
-                            &String::from_utf8(result.stderr)
-                                .expect("Output is not valid utf-8"),
-                        );
-                    }
-
+                let header = format!("{}", &key.green().bold());
+                if let Some(output) = collect_output(header, result) {
                     println!("{}", output);
                 }
             }
@@ -213,18 +195,11 @@ fn status(config: &mut Config, all: bool) {
         })
         .collect();
 
-    let errors: Vec<Result<()>> = output.into_iter().filter(|r| r.is_err()).collect();
-
-    if !errors.is_empty() {
-        for e in errors {
-            let error = e.err().unwrap();
-            println!("{}", error);
-        }
-        exit("Unable to get status from all repos");
-    }
+    handle_errors("Could not get status of all repos", results);
 
     println!("done")
 }
+
 
 fn main() {
     let default_config_path_raw = dirs::home_dir()
