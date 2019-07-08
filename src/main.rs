@@ -51,16 +51,14 @@ fn collect_output(header: String, result: Output) -> Option<String> {
         if !result.stdout.is_empty() {
             output.push_str("\n");
             output.push_str(
-                &String::from_utf8(result.stdout.clone())
-                    .expect("Output is not valid utf-8"),
+                &String::from_utf8(result.stdout.clone()).expect("Output is not valid utf-8"),
             );
         }
 
         if !result.stderr.is_empty() {
             output.push_str("\n");
             output.push_str(
-                &String::from_utf8(result.stderr.clone())
-                    .expect("Output is not valid utf-8"),
+                &String::from_utf8(result.stderr.clone()).expect("Output is not valid utf-8"),
             );
         }
 
@@ -153,7 +151,11 @@ fn pull(config: &mut Config, allow_stash: bool) {
 }
 
 fn run(config: &mut Config, raw_cmd: &mut Vec<&str>) {
-    println!("Running `{}` in {}", raw_cmd.clone().join(" "), pluralize_repos(config));
+    println!(
+        "Running `{}` in {}",
+        raw_cmd.clone().join(" "),
+        pluralize_repos(config)
+    );
 
     let args: Vec<&str> = raw_cmd.drain(1..).collect();
     // this is safe, since we know we had at least one value
@@ -199,7 +201,6 @@ fn status(config: &mut Config, all: bool) {
 
     println!("done")
 }
-
 
 fn main() {
     let default_config_path_raw = dirs::home_dir()

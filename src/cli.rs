@@ -23,12 +23,13 @@ pub fn get_matches<'a>(
         .subcommand(
             SubCommand::with_name("status")
                 .about("gets status for tracked repos")
-                .arg(Arg::with_name("all")
-                        .help(
-                            "Show status for all tracked repos, even if a repo is not dirty",
-                        )
+                .arg(
+                    Arg::with_name("all")
+                        .help("Show status for all tracked repos, even if a repo is not dirty")
                         .short("a")
-                        .long("all")))
+                        .long("all"),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("track")
                 .about("track an existing repo")
