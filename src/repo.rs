@@ -1,4 +1,4 @@
-use error::Result;
+use error::{RepoRsError, Result};
 use git2::{Repository, RepositoryState};
 use std::path::Path;
 use std::process::{Command, Output};
@@ -32,11 +32,7 @@ impl Repo {
 
         match repo.state() {
             RepositoryState::Clean => Ok(()),
-            _ => Err(format!(
-                "Repository '{}' has local git operations in progress",
-                self.key
-            )
-            .into()),
+            _ => Err(RepoRsError::OperationsInProgress(self.key.clone())),
         }
     }
 
@@ -61,9 +57,10 @@ impl Repo {
     fn current_branch(&self) -> Result<String> {
         let repo = self.repository()?;
         let head = repo.head()?;
-        head.shorthand()
-            .and_then(|b| Some(b.to_string()))
-            .ok_or(format!("Could not determine current branch for '{}'", self.key).into())
+        match head.shorthand() {
+            Some(b) => Ok(b.to_string()),
+            None => Err(RepoRsError::BranchUnknown(self.key.clone()))
+        }
     }
 
     fn checkout(&self, branch: &str) -> Result<Output> {
@@ -81,13 +78,7 @@ impl Repo {
         let result = cmd.output()?;
 
         if !result.status.success() {
-            return Err(format!(
-                "Error running `{:?}` in '{}': {}",
-                cmd,
-                self.key,
-                String::from_utf8(result.stderr).expect("Output contains invalid utf-8")
-            )
-            .into());
+            return Err(RepoRsError::CommandFailed(self.key.clone(), cmd, result));
         }
 
         Ok(result)
@@ -112,9 +103,7 @@ impl Repo {
             if allow_stash {
                 self.stash()?;
             } else {
-                return Err(
-                    format!("Repo '{}' is dirty, attempt with --stash option?", self.key).into(),
-                );
+                return Err(RepoRsError::RepoDirty(self.key.clone()));
             }
         }
 
@@ -146,7 +135,7 @@ impl Repo {
     fn repository<'a>(&'a self) -> Result<&'a Repository> {
         self.repository
             .as_ref()
-            .ok_or("Invalid git repo or repository not initialized".into())
+            .ok_or(RepoRsError::UninitializedRepoObject(self.key.clone()))
     }
 }
 
@@ -195,11 +184,7 @@ impl RepoBuilder {
         {
             let real_path = match repository.workdir() {
                 Some(p) => p.to_str().unwrap().to_string(),
-                None => {
-                    return Err(
-                        "Path does not exist at or within a valid, non-empty git repo".into(),
-                    )
-                }
+                None => return Err(RepoRsError::NoRepo(p))
             };
             self.path = real_path;
         }
@@ -217,7 +202,7 @@ impl RepoBuilder {
             if let Some(candidate) = repository.remotes()?.get(0) {
                 self.remote = Some(candidate.to_owned());
             } else {
-                return Err("No remotes found. Please specify remote for this repository".into());
+                return Err(RepoRsError::NoRemotes(p));
             }
         }
 

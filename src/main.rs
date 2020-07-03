@@ -2,8 +2,6 @@
 extern crate clap;
 extern crate colored;
 extern crate dirs;
-#[macro_use]
-extern crate error_chain;
 extern crate futures;
 extern crate git2;
 #[macro_use]
