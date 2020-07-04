@@ -2,6 +2,7 @@
 name = "repo-rs"
 version = "0.1.0"
 authors = ["Matt Chun-Lum <matt@questionable.engineering>"]
+edition = "2018"
 
 [[bin]]
 bench = false

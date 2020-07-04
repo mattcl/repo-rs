@@ -3,12 +3,11 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use prettytable::format;
-use prettytable::Table;
-use serde_json;
+use prettytable::{format, Table, row, cell};
+use serde_derive::{Serialize, Deserialize};
 
-use error::Result;
-use repo::Repo;
+use crate::error::Result;
+use crate::repo::Repo;
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {

@@ -1,7 +1,9 @@
-use error::{RepoRsError, Result};
+use crate::error::{RepoRsError, Result};
 use git2::{Repository, RepositoryState};
 use std::path::Path;
 use std::process::{Command, Output};
+use serde_derive::{Serialize, Deserialize};
+
 
 #[derive(Serialize, Deserialize)]
 pub struct Repo {

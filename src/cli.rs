@@ -1,4 +1,4 @@
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand, crate_authors, crate_version};
 
 pub fn get_matches<'a>(
     default_config_path: &'a str,

@@ -1,26 +1,13 @@
-#[macro_use]
-extern crate clap;
-extern crate colored;
-extern crate dirs;
-extern crate futures;
-extern crate git2;
-#[macro_use]
-extern crate prettytable;
-extern crate rayon;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate tokio_core;
-
 use std::env;
 use std::path::Path;
 use std::process::Output;
 
 use clap::ArgMatches;
 use colored::*;
+use rayon::prelude::*;
+
 use config::Config;
 use error::{Result, UnwrapOrExit};
-use rayon::prelude::*;
 use repo::Repo;
 
 mod cli;
