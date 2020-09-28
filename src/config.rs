@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use prettytable::{format, Table, row, cell};
-use serde_derive::{Serialize, Deserialize};
+use prettytable::{cell, format, row, Table};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::repo::Repo;

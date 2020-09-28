@@ -1,3 +1,4 @@
+use futures::stream::StreamExt;
 use std::env;
 use std::path::Path;
 use std::process::Output;
@@ -7,12 +8,13 @@ use colored::*;
 use rayon::prelude::*;
 
 use config::Config;
-use error::{Result, UnwrapOrExit};
+use error::{RepoRsError, Result, UnwrapOrExit};
 use repo::Repo;
 
 mod cli;
 mod config;
 mod error;
+mod github;
 mod repo;
 
 pub fn exit(message: &str) -> ! {
@@ -187,6 +189,31 @@ fn status(config: &mut Config, all: bool) {
     println!("done")
 }
 
+#[tokio::main]
+async fn list_org_repos(org_name: String) {
+    match github::org_repos(org_name).await {
+        Ok(mut response) => {
+            while let Some(repo_raw) = response.next().await {
+                match repo_raw {
+                    Ok(repo) => println!("{}", repo.full_name),
+                    Err(err) => {
+                        handle_errors(
+                            "Could not fetch all repositories from the specified organization",
+                            vec![Err(RepoRsError::from(err))],
+                        );
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            handle_errors(
+                "Could not fetch repositories from the specified organization",
+                vec![Err(err)],
+            );
+        }
+    }
+}
+
 fn main() {
     let default_config_path_raw = dirs::home_dir()
         .expect("could not determine home directory")
@@ -199,32 +226,28 @@ fn main() {
     let config_file = Path::new(matches.value_of("config").unwrap());
     let mut config = Config::new(&config_file).unwrap_or_exit("Error loading config");
 
-    match matches.subcommand_name() {
-        Some("list") => config.list(),
-        Some("track") => {
-            // we've checked already, so safe to unwrap
-            let subcmd = matches.subcommand_matches("track").unwrap();
-            track(&mut config, subcmd, config_file)
-        }
-        Some("untrack") => {
-            let subcmd = matches.subcommand_matches("untrack").unwrap();
-            untrack(&mut config, subcmd, config_file)
-        }
-        Some("pull") => {
-            let subcmd = matches.subcommand_matches("pull").unwrap();
-            let allow_stash = subcmd.is_present("stash");
+    match matches.subcommand() {
+        ("list", Some(_)) => config.list(),
+        ("track", Some(track_matches)) => track(&mut config, track_matches, config_file),
+        ("untrack", Some(untrack_matches)) => untrack(&mut config, untrack_matches, config_file),
+        ("pull", Some(pull_matches)) => {
+            let allow_stash = pull_matches.is_present("stash");
             pull(&mut config, allow_stash)
         }
-        Some("run") => {
-            let subcmd = matches.subcommand_matches("run").unwrap();
-            let mut raw_cmd: Vec<&str> = subcmd.values_of("cmd").unwrap().collect();
+        ("run", Some(run_matches)) => {
+            let mut raw_cmd: Vec<&str> = run_matches.values_of("cmd").unwrap().collect();
             run(&mut config, &mut raw_cmd)
         }
-        Some("status") => {
-            let subcmd = matches.subcommand_matches("status").unwrap();
-            let all = subcmd.is_present("all");
+        ("status", Some(status_matches)) => {
+            let all = status_matches.is_present("all");
             status(&mut config, all)
         }
+        ("gh", Some(gh_matches)) => match gh_matches.subcommand() {
+            ("list", Some(list_matches)) => {
+                list_org_repos(list_matches.value_of("org").unwrap().to_string())
+            }
+            _ => unreachable!(),
+        },
         _ => unreachable!(),
-    };
+    }
 }

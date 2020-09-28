@@ -1,9 +1,8 @@
 use crate::error::{RepoRsError, Result};
 use git2::{Repository, RepositoryState};
+use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::{Command, Output};
-use serde_derive::{Serialize, Deserialize};
-
 
 #[derive(Serialize, Deserialize)]
 pub struct Repo {
@@ -61,7 +60,7 @@ impl Repo {
         let head = repo.head()?;
         match head.shorthand() {
             Some(b) => Ok(b.to_string()),
-            None => Err(RepoRsError::BranchUnknown(self.key.clone()))
+            None => Err(RepoRsError::BranchUnknown(self.key.clone())),
         }
     }
 
@@ -186,7 +185,7 @@ impl RepoBuilder {
         {
             let real_path = match repository.workdir() {
                 Some(p) => p.to_str().unwrap().to_string(),
-                None => return Err(RepoRsError::NoRepo(p))
+                None => return Err(RepoRsError::NoRepo(p)),
             };
             self.path = real_path;
         }

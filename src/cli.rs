@@ -1,4 +1,4 @@
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand, crate_authors, crate_version};
+use clap::{crate_authors, crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 
 pub fn get_matches<'a>(
     default_config_path: &'a str,
@@ -18,6 +18,20 @@ pub fn get_matches<'a>(
                 .short("c")
                 .long("config")
                 .global(true),
+        )
+        .subcommand(
+            SubCommand::with_name("gh")
+                .about("interacts with github")
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("lists repos from an organization")
+                        .arg(
+                            Arg::with_name("org")
+                                .help("The github organization")
+                                .index(1)
+                                .required(true),
+                        ),
+                ),
         )
         .subcommand(SubCommand::with_name("list").about("lists tracked repos"))
         .subcommand(
