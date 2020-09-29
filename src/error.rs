@@ -2,6 +2,7 @@ use std::env;
 
 use clap;
 use git2;
+use github_v3;
 use serde_json::error::Error as SerdeError;
 
 /// RepoRsError enumerates all possible errors returned by this library
@@ -31,6 +32,9 @@ pub enum RepoRsError {
     /// Represents all other cases of `git2::Error`
     GitError(git2::Error),
 
+    /// Represents all other cases of `github_v3::GHError`
+    GithubError(github_v3::GHError),
+
     /// Represents all other cases of `std::io::Error`
     IOError(std::io::Error),
 
@@ -52,6 +56,7 @@ impl std::error::Error for RepoRsError {
             RepoRsError::RepoDirty(_) => None,
             RepoRsError::UninitializedRepoObject(_) => None,
             RepoRsError::GitError(ref err) => Some(err),
+            RepoRsError::GithubError(ref err) => Some(err),
             RepoRsError::IOError(ref err) => Some(err),
             RepoRsError::JsonError(ref err) => Some(err),
             RepoRsError::VarError(ref err) => Some(err),
@@ -65,36 +70,41 @@ impl std::fmt::Display for RepoRsError {
             RepoRsError::BranchUnknown(ref key) => {
                 write!(f, "Could not determine current branch for '{}'", key)
             }
-            RepoRsError::CommandFailed(ref key, ref command, ref output) => {
-                write!(f, "Error running `{:?}` in '{}': {:?}", command, key, output)
-            }
-            RepoRsError::NoRemotes(ref key) => {
-                write!(f, "No remotes found for '{}'. Please specify a remote for this repository", key)
-            }
-            RepoRsError::NoRepo(ref key) => {
-                write!(f, "Specified path '{}' is not at or in a valid, non-empty git repository", key)
-            }
-            RepoRsError::OperationsInProgress(ref key) => {
-                write!(f, "Repository '{}' has local git operations in progress", key)
-            }
-            RepoRsError::RepoDirty(ref key) => {
-                write!(f, "Repository '{}' is dirty. Maybe attempt with --stash option?", key)
-            }
-            RepoRsError::UninitializedRepoObject(ref key) => {
-                write!(f, "Repository '{}' is uninitialized. This error should be unreachable", key)
-            }
-            RepoRsError::GitError(ref err) => {
-                err.fmt(f)
-            }
-            RepoRsError::IOError(ref err) => {
-                err.fmt(f)
-            }
-            RepoRsError::JsonError(ref err) => {
-                err.fmt(f)
-            }
-            RepoRsError::VarError(ref err) => {
-                err.fmt(f)
-            }
+            RepoRsError::CommandFailed(ref key, ref command, ref output) => write!(
+                f,
+                "Error running `{:?}` in '{}': {:?}",
+                command, key, output
+            ),
+            RepoRsError::NoRemotes(ref key) => write!(
+                f,
+                "No remotes found for '{}'. Please specify a remote for this repository",
+                key
+            ),
+            RepoRsError::NoRepo(ref key) => write!(
+                f,
+                "Specified path '{}' is not at or in a valid, non-empty git repository",
+                key
+            ),
+            RepoRsError::OperationsInProgress(ref key) => write!(
+                f,
+                "Repository '{}' has local git operations in progress",
+                key
+            ),
+            RepoRsError::RepoDirty(ref key) => write!(
+                f,
+                "Repository '{}' is dirty. Maybe attempt with --stash option?",
+                key
+            ),
+            RepoRsError::UninitializedRepoObject(ref key) => write!(
+                f,
+                "Repository '{}' is uninitialized. This error should be unreachable",
+                key
+            ),
+            RepoRsError::GitError(ref err) => err.fmt(f),
+            RepoRsError::GithubError(ref err) => err.fmt(f),
+            RepoRsError::IOError(ref err) => err.fmt(f),
+            RepoRsError::JsonError(ref err) => err.fmt(f),
+            RepoRsError::VarError(ref err) => err.fmt(f),
         }
     }
 }
@@ -102,6 +112,12 @@ impl std::fmt::Display for RepoRsError {
 impl From<git2::Error> for RepoRsError {
     fn from(err: git2::Error) -> RepoRsError {
         RepoRsError::GitError(err)
+    }
+}
+
+impl From<github_v3::GHError> for RepoRsError {
+    fn from(err: github_v3::GHError) -> RepoRsError {
+        RepoRsError::GithubError(err)
     }
 }
 

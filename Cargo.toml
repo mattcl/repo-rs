@@ -2,6 +2,7 @@
 name = "repo-rs"
 version = "0.1.0"
 authors = ["Matt Chun-Lum <matt@questionable.engineering>"]
+edition = "2018"
 
 [[bin]]
 bench = false
@@ -16,13 +17,15 @@ cfg-if = "0.1.9"
 clap = "*"
 colored = "^1.5"
 dirs = "2.0.1"
-futures = "*"
+futures = "0.3.5"
 git2 = "*"
+# Until my patch is merged, we hve to fetch from gitlab
+# github_v3 = "0.3.2"
+github_v3 = { git = "https://gitlab.com/mchunlum/crates.rs.git", branch = "fixing-git" }
 prettytable-rs = "*"
 rayon = "*"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-tokio-core = "*"
-tokio-io = "*"
+tokio = { version = "0.2", features = ["macros", "rt-core"] }
 url = "1.7.2"
