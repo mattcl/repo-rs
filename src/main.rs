@@ -144,7 +144,7 @@ async fn pull(config: &Config, allow_stash: bool) {
 }
 
 #[tokio::main]
-async fn run(config: &Config, raw_cmd: &mut Vec<&str>) {
+async fn run(config: &Config, raw_cmd: &mut Vec<&str>, quiet: bool) {
     println!(
         "Running `{}` in {}",
         raw_cmd.clone().join(" "),
@@ -177,7 +177,11 @@ async fn run(config: &Config, raw_cmd: &mut Vec<&str>) {
         })
         .collect();
 
-    join_and_handle_errors("Not all commands succeeded", tasks).await;
+    if quiet {
+        join_all(tasks).await;
+    } else {
+        join_and_handle_errors("Not all commands succeeded", tasks).await;
+    }
 
     println!("done")
 }
@@ -255,8 +259,9 @@ fn main() {
             pull(&config, allow_stash)
         }
         ("run", Some(run_matches)) => {
+            let quiet = run_matches.is_present("quiet");
             let mut raw_cmd: Vec<&str> = run_matches.values_of("cmd").unwrap().collect();
-            run(&config, &mut raw_cmd)
+            run(&config, &mut raw_cmd, quiet)
         }
         ("status", Some(status_matches)) => {
             let all = status_matches.is_present("all");

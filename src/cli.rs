@@ -116,6 +116,14 @@ pub fn get_matches<'a>(
             SubCommand::with_name("run")
                 .about("run a command in all tracked repos")
                 .arg(
+                    Arg::with_name("quiet")
+                        .help(
+                            "Ignore failures",
+                        )
+                        .short("q")
+                        .long("quiet"),
+                )
+                .arg(
                     Arg::with_name("cmd")
                         .multiple(true)
                         .allow_hyphen_values(true)
