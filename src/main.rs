@@ -1,11 +1,11 @@
-use futures::stream::StreamExt;
+use futures::{future::join_all, stream::StreamExt};
+use tokio::task::{JoinError, JoinHandle};
 use std::env;
 use std::path::Path;
 use std::process::Output;
 
 use clap::ArgMatches;
 use colored::*;
-use rayon::prelude::*;
 
 use config::Config;
 use error::{RepoRsError, Result, UnwrapOrExit};
@@ -22,7 +22,7 @@ pub fn exit(message: &str) -> ! {
     err.exit();
 }
 
-fn pluralize_repos(config: &mut Config) -> String {
+fn pluralize_repos(config: &Config) -> String {
     let count = config.repos.len();
     let noun = match count {
         1 => "repo",
@@ -52,6 +52,15 @@ fn collect_output(header: String, result: Output) -> Option<String> {
         return Some(output);
     }
     None
+}
+
+async fn join_and_handle_errors(message: &str, tasks: Vec<JoinHandle<Result<()>>>) {
+    let results: Vec<_> = join_all(tasks).await
+        .into_iter()
+        .collect::<std::result::Result<Vec<Result<()>>, JoinError>>()
+        .unwrap_or_exit("Error with runtime");
+
+    handle_errors(message, results);
 }
 
 fn handle_errors(message: &str, results: Vec<Result<()>>) {
@@ -113,78 +122,89 @@ fn untrack(config: &mut Config, subcmd: &ArgMatches, config_file: &Path) {
     }
 }
 
-fn pull(config: &mut Config, allow_stash: bool) {
+#[tokio::main]
+async fn pull(config: &Config, allow_stash: bool) {
     println!("Attempting to update {}", pluralize_repos(config));
 
-    let errors: Vec<Result<()>> = config
+    let tasks: Vec<_> = config
         .repos
-        .par_iter_mut()
-        .map(|(key, repo)| -> Result<()> {
-            let s = format!("Updating {}", &key.white().bold());
-            println!("{}", s);
-            repo.init().and_then(|_| repo.update_repo(allow_stash))?;
-            Ok(())
+        .iter()
+        .map(|(key, repo)| {
+            let repo = repo.clone();
+            let s = format!("Updated {}", &key.white().bold());
+            tokio::spawn(async move {
+                repo.update_repo(allow_stash).await?;
+                println!("{}", s);
+                Ok(())
+           })
         })
-        .filter(|r| r.is_err())
         .collect();
 
-    if !errors.is_empty() {
-        for e in errors {
-            let error = e.err().unwrap();
-            println!("{}", error);
-        }
-        exit("Not all repos could be updated");
-    }
+    join_and_handle_errors("Not all repos could be updated", tasks).await;
 }
 
-fn run(config: &mut Config, raw_cmd: &mut Vec<&str>) {
+#[tokio::main]
+async fn run(config: &Config, raw_cmd: &mut Vec<&str>) {
     println!(
         "Running `{}` in {}",
         raw_cmd.clone().join(" "),
         pluralize_repos(config)
     );
 
-    let args: Vec<&str> = raw_cmd.drain(1..).collect();
+    let args: Vec<String> = raw_cmd.drain(1..).map(|s| s.to_owned()).collect();
     // this is safe, since we know we had at least one value
-    let prog = raw_cmd.pop().unwrap();
+    let prog = raw_cmd.pop().unwrap().to_string();
 
-    let results: Vec<Result<()>> = config
+    let tasks: Vec<_> = config
         .repos
-        .par_iter_mut()
-        .map(|(key, repo)| -> Result<()> {
-            let result = repo.init().and_then(|_| repo.run(prog, args.clone()))?;
+        .iter()
+        .map(|(key, repo)| {
+            // FIXME: This whole set of clones is awful, really. It is probably
+            // better to construct the command instance outside of the repo.
+            // - MCL - 2021-08-06
+            let repo = repo.clone();
+            let args = args.clone();
+            let prog = prog.clone();
             let header = format!("{}", &key.green().bold());
-            if let Some(output) = collect_output(header, result) {
-                println!("{}", output);
-            }
-            Ok(())
+            tokio::spawn(async move {
+                let args: Vec<_> = args.iter().map(|s| s.as_str()).collect();
+                let result = repo.run(&prog, &args).await?;
+                if let Some(output) = collect_output(header, result) {
+                    println!("{}", output);
+                }
+                Ok(())
+            })
         })
         .collect();
 
-    handle_errors("Not all commands succeeded", results);
+    join_and_handle_errors("Not all commands succeeded", tasks).await;
 
     println!("done")
 }
 
-fn status(config: &mut Config, all: bool) {
+#[tokio::main]
+async fn status(config: &Config, all: bool) {
     println!("Getting status of {}", pluralize_repos(config));
 
-    let results: Vec<Result<()>> = config
+    let tasks: Vec<_> = config
         .repos
-        .par_iter_mut()
-        .map(|(key, repo)| -> Result<()> {
-            if let Some(result) = repo.init().and_then(|_| repo.status(!all))? {
-                let header = format!("{}", &key.green().bold());
-                if let Some(output) = collect_output(header, result) {
-                    println!("{}", output);
+        .iter()
+        .map(|(key, repo)| {
+            let repo = repo.clone();
+            let header = format!("{}", &key.green().bold());
+            tokio::spawn(async move {
+                if let Some(result) = repo.status(!all).await? {
+                    if let Some(output) = collect_output(header, result) {
+                        println!("{}", output);
+                    }
                 }
-            }
 
-            Ok(())
+                Ok(())
+            })
         })
         .collect();
 
-    handle_errors("Could not get status of all repos", results);
+    join_and_handle_errors("Could not get status of all repos", tasks).await;
 
     println!("done")
 }
@@ -232,15 +252,15 @@ fn main() {
         ("untrack", Some(untrack_matches)) => untrack(&mut config, untrack_matches, config_file),
         ("pull", Some(pull_matches)) => {
             let allow_stash = pull_matches.is_present("stash");
-            pull(&mut config, allow_stash)
+            pull(&config, allow_stash)
         }
         ("run", Some(run_matches)) => {
             let mut raw_cmd: Vec<&str> = run_matches.values_of("cmd").unwrap().collect();
-            run(&mut config, &mut raw_cmd)
+            run(&config, &mut raw_cmd)
         }
         ("status", Some(status_matches)) => {
             let all = status_matches.is_present("all");
-            status(&mut config, all)
+            status(&config, all)
         }
         ("gh", Some(gh_matches)) => match gh_matches.subcommand() {
             ("list", Some(list_matches)) => {

@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, fmt::Display};
 
 use clap;
 use git2;
@@ -12,7 +12,7 @@ pub enum RepoRsError {
     BranchUnknown(String),
 
     /// Represents a command returning a nonzero exit code
-    CommandFailed(String, std::process::Command, std::process::Output),
+    CommandFailed(String, tokio::process::Command, std::process::Output),
 
     /// Represents a repository with no remotes defined
     NoRemotes(String),
@@ -25,9 +25,6 @@ pub enum RepoRsError {
 
     /// Represents repository that is dirty
     RepoDirty(String),
-
-    /// Represents an invalid or uninitialized git repo. Should not be reachable
-    UninitializedRepoObject(String),
 
     /// Represents all other cases of `git2::Error`
     GitError(git2::Error),
@@ -54,7 +51,6 @@ impl std::error::Error for RepoRsError {
             RepoRsError::NoRepo(_) => None,
             RepoRsError::OperationsInProgress(_) => None,
             RepoRsError::RepoDirty(_) => None,
-            RepoRsError::UninitializedRepoObject(_) => None,
             RepoRsError::GitError(ref err) => Some(err),
             RepoRsError::GithubError(ref err) => Some(err),
             RepoRsError::IOError(ref err) => Some(err),
@@ -93,11 +89,6 @@ impl std::fmt::Display for RepoRsError {
             RepoRsError::RepoDirty(ref key) => write!(
                 f,
                 "Repository '{}' is dirty. Maybe attempt with --stash option?",
-                key
-            ),
-            RepoRsError::UninitializedRepoObject(ref key) => write!(
-                f,
-                "Repository '{}' is uninitialized. This error should be unreachable",
                 key
             ),
             RepoRsError::GitError(ref err) => err.fmt(f),
@@ -164,7 +155,7 @@ impl<T> UnwrapOrExit<T> for Option<T> {
     }
 }
 
-impl<T> UnwrapOrExit<T> for Result<T> {
+impl<T, E> UnwrapOrExit<T> for std::result::Result<T, E> where E: Display {
     fn unwrap_or_else<F>(self, f: F) -> T
     where
         F: FnOnce() -> T,
