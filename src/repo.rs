@@ -18,10 +18,6 @@ impl Repo {
         RepoBuilder::new(path)
     }
 
-    // pub fn clone(url: &str, dest: &str, branch: &str) -> Result<Repo> {
-    //     let repository = Repository::clone(url, dest)?;
-    // }
-
     fn validate_working_state(&self) -> Result<()> {
         let repo = self.repository()?;
 
@@ -51,11 +47,7 @@ impl Repo {
 
     fn current_branch(&self) -> Result<String> {
         let repo = self.repository()?;
-        let head = repo.head()?;
-        match head.shorthand() {
-            Some(b) => Ok(b.to_string()),
-            None => Err(RepoRsError::BranchUnknown(self.key.clone())),
-        }
+        current_branch(&self.key, &repo)
     }
 
     async fn checkout(&self, branch: &str) -> Result<Output> {
@@ -143,7 +135,7 @@ pub struct RepoBuilder {
     pub key: Option<String>,
     pub path: String,
     pub remote: Option<String>,
-    pub branch: String,
+    pub branch: Option<String>,
 }
 
 impl RepoBuilder {
@@ -152,7 +144,7 @@ impl RepoBuilder {
             key: None,
             path: path.to_owned(),
             remote: None,
-            branch: "master".to_owned(),
+            branch: None,
         }
     }
 
@@ -165,7 +157,7 @@ impl RepoBuilder {
     }
 
     pub fn branch(&mut self, branch: &str) {
-        self.branch = branch.to_owned();
+        self.branch = Some(branch.to_owned());
     }
 
     pub fn build(mut self) -> Result<Repo> {
@@ -186,26 +178,44 @@ impl RepoBuilder {
         let p = self.path.clone();
         let path = Path::new(&p);
 
-        if self.key.is_none() {
+        let key = match self.key {
+            Some(k) => k,
             // attempt to derive key from repo path
-            self.key = Some(path.file_name().unwrap().to_str().unwrap().to_owned());
-        }
+            None => path.file_name().unwrap().to_str().unwrap().to_owned()
+        };
 
-        if self.remote.is_none() {
-            // use the first remote you can find
-            if let Some(candidate) = repository.remotes()?.get(0) {
-                self.remote = Some(candidate.to_owned());
-            } else {
-                return Err(RepoRsError::NoRemotes(p));
+        let remote = match self.remote {
+            Some(r) => r,
+            None => {
+                if let Some(candidate) = repository.remotes()?.get(0) {
+                    candidate.to_owned()
+                } else {
+                    return Err(RepoRsError::NoRemotes(p));
+                }
             }
-        }
+        };
+
+        let branch = match self.branch {
+            Some(b) => b,
+            // attempt to track the current branch if one was not specified
+            None => current_branch(&key, &repository)?
+        };
 
         Ok(Repo {
-            key: self.key.unwrap().clone(),
+            key,
             path: self.path.clone(),
-            remote: self.remote.unwrap().clone(),
-            branch: self.branch.clone(),
+            remote,
+            branch,
         })
+    }
+}
+
+// helper since we need to do this during the builder as well
+fn current_branch(key: &str, repository: &Repository) -> Result<String> {
+    let head = repository.head()?;
+    match head.shorthand() {
+        Some(b) => Ok(b.to_string()),
+        None => Err(RepoRsError::BranchUnknown(key.to_string())),
     }
 }
 

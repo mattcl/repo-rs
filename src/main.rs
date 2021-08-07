@@ -89,9 +89,10 @@ fn track(config: &mut Config, subcmd: &ArgMatches, config_file: &Path) {
         builder.remote(remote);
     }
 
-    // this is safe because we have a default value
-    let branch = subcmd.value_of("branch").unwrap();
-    builder.branch(branch);
+    if let Some(branch) = subcmd.value_of("branch") {
+        builder.branch(branch);
+    };
+
     let repo = builder.build().unwrap_or_exit("Error tracking repository");
 
     if config.contains(&repo) {

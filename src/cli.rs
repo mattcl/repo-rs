@@ -70,9 +70,9 @@ pub fn get_matches<'a>(
                 )
                 .arg(
                     Arg::with_name("branch")
-                        .help("The branch to track")
+                        .help("The branch to track (will use the current branch if not specified)")
                         .takes_value(true)
-                        .default_value("master")
+                        .required(false)
                         .short("b")
                         .long("branch"),
                 )
