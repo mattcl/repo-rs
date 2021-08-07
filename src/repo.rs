@@ -2,7 +2,8 @@ use crate::error::{RepoRsError, Result};
 use git2::{Repository, RepositoryState};
 use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
+use tokio::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Repo {
@@ -69,7 +70,7 @@ impl Repo {
         let mut cmd = Command::new(prog);
         cmd.current_dir(&self.path).args(args);
 
-        let result = cmd.output()?;
+        let result = cmd.output().await?;
 
         if !result.status.success() {
             return Err(RepoRsError::CommandFailed(self.key.clone(), cmd, result));

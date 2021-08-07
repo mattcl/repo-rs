@@ -6,7 +6,6 @@ use std::process::Output;
 
 use clap::ArgMatches;
 use colored::*;
-use rayon::prelude::*;
 
 use config::Config;
 use error::{RepoRsError, Result, UnwrapOrExit};
@@ -132,10 +131,10 @@ async fn pull(config: &Config, allow_stash: bool) {
         .iter()
         .map(|(key, repo)| {
             let repo = repo.clone();
-            let s = format!("Updating {}", &key.white().bold());
+            let s = format!("Updated {}", &key.white().bold());
             tokio::spawn(async move {
-                println!("{}", s);
                 repo.update_repo(allow_stash).await?;
+                println!("{}", s);
                 Ok(())
            })
         })
@@ -160,6 +159,9 @@ async fn run(config: &Config, raw_cmd: &mut Vec<&str>) {
         .repos
         .iter()
         .map(|(key, repo)| {
+            // FIXME: This whole set of clones is awful, really. It is probably
+            // better to construct the command instance outside of the repo.
+            // - MCL - 2021-08-06
             let repo = repo.clone();
             let args = args.clone();
             let prog = prog.clone();
