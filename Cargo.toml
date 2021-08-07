@@ -13,19 +13,18 @@ name = "repo-rs"
 lto = true
 
 [dependencies]
-cfg-if = "0.1.9"
-clap = "*"
-colored = "^1.5"
-dirs = "2.0.1"
-futures = "0.3.5"
-git2 = "*"
+clap = "2.33"
+colored = "2"
+dirs = "3"
+futures = "0.3"
+git2 = "0.13"
 # Until my patch is merged, we hve to fetch from gitlab
 # github_v3 = "0.3.2"
 github_v3 = { git = "https://gitlab.com/mchunlum/crates.rs.git", branch = "fixing-git" }
-prettytable-rs = "*"
+prettytable-rs = "0.8"
 rayon = "*"
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
-tokio = { version = "0.2", features = ["macros", "rt-core"] }
-url = "1.7.2"
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+url = "2"

@@ -4,24 +4,17 @@ use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::{Command, Output};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Repo {
     pub key: String,
     pub path: String,
     pub remote: String,
     pub branch: String,
-    #[serde(skip_serializing, skip_deserializing)]
-    pub repository: Option<Repository>,
 }
 
 impl Repo {
     pub fn new(path: &str) -> RepoBuilder {
         RepoBuilder::new(path)
-    }
-
-    pub fn init(&mut self) -> Result<()> {
-        self.repository = Some(Repository::discover(&self.path)?);
-        Ok(())
     }
 
     // pub fn clone(url: &str, dest: &str, branch: &str) -> Result<Repo> {
@@ -46,12 +39,12 @@ impl Repo {
             .unwrap_or(false))
     }
 
-    fn stash(&self) -> Result<Output> {
-        self.run("git", vec!["stash"])
+    async fn stash(&self) -> Result<Output> {
+        self.run("git", &["stash"]).await
     }
 
-    fn stash_pop(&self) -> Result<()> {
-        self.run("git", vec!["stash", "pop"])?;
+    async fn stash_pop(&self) -> Result<()> {
+        self.run("git", &["stash", "pop"]).await?;
         Ok(())
     }
 
@@ -64,15 +57,15 @@ impl Repo {
         }
     }
 
-    fn checkout(&self, branch: &str) -> Result<Output> {
-        self.run("git", vec!["checkout", branch])
+    async fn checkout(&self, branch: &str) -> Result<Output> {
+        self.run("git", &["checkout", branch]).await
     }
 
-    fn rebase(&self) -> Result<Output> {
-        self.run("git", vec!["pull", "--rebase"])
+    async fn rebase(&self) -> Result<Output> {
+        self.run("git", &["pull", "--rebase"]).await
     }
 
-    pub fn run(&self, prog: &str, args: Vec<&str>) -> Result<Output> {
+    pub async fn run(&self, prog: &str, args: &[&str]) -> Result<Output> {
         let mut cmd = Command::new(prog);
         cmd.current_dir(&self.path).args(args);
 
@@ -85,14 +78,14 @@ impl Repo {
         Ok(result)
     }
 
-    pub fn status(&self, require_dirty: bool) -> Result<Option<Output>> {
+    pub async fn status(&self, require_dirty: bool) -> Result<Option<Output>> {
         if !require_dirty || self.is_dirty()? {
-            return Ok(Some(self.run("git", vec!["status"])?));
+            return Ok(Some(self.run("git", &["status"]).await?));
         }
         Ok(None)
     }
 
-    pub fn update_repo(&self, allow_stash: bool) -> Result<Output> {
+    pub async fn update_repo(&self, allow_stash: bool) -> Result<Output> {
         // make sure there are no active merges/rebases/wahtever
         self.validate_working_state()?;
 
@@ -102,7 +95,7 @@ impl Repo {
         // stash if necessary
         if dirty {
             if allow_stash {
-                self.stash()?;
+                self.stash().await?;
             } else {
                 return Err(RepoRsError::RepoDirty(self.key.clone()));
             }
@@ -114,30 +107,29 @@ impl Repo {
 
         // switch to target branch if necessary
         if requires_branch_change {
-            self.checkout(&self.branch)?;
+            self.checkout(&self.branch).await?;
         }
 
         // pull and rebase
-        let output = self.rebase()?;
+        let output = self.rebase().await?;
 
         // switch to the original branch if necessary
         if requires_branch_change {
-            self.checkout(&original_branch)?;
+            self.checkout(&original_branch).await?;
         }
 
         // undo the stash if necessary
         if dirty && allow_stash {
-            self.stash_pop()?;
+            self.stash_pop().await?;
         }
 
         Ok(output)
     }
 
-    fn repository<'a>(&'a self) -> Result<&'a Repository> {
-        self.repository
-            .as_ref()
-            .ok_or(RepoRsError::UninitializedRepoObject(self.key.clone()))
+    fn repository(&self) -> Result<Repository> {
+        Ok(Repository::discover(&self.path)?)
     }
+
 }
 
 impl PartialEq for Repo {
@@ -212,7 +204,6 @@ impl RepoBuilder {
             path: self.path.clone(),
             remote: self.remote.unwrap().clone(),
             branch: self.branch.clone(),
-            repository: Some(repository),
         })
     }
 }
@@ -228,7 +219,6 @@ mod tests {
             path: "bar".to_string(),
             remote: "baz".to_string(),
             branch: "fez".to_string(),
-            repository: None,
         };
 
         let repo2 = Repo {
@@ -236,7 +226,6 @@ mod tests {
             path: "hoof".to_string(),
             remote: "herp".to_string(),
             branch: "derp".to_string(),
-            repository: None,
         };
 
         let repo3 = Repo {
@@ -244,7 +233,6 @@ mod tests {
             path: "bar".to_string(),
             remote: "herp1".to_string(),
             branch: "derp1".to_string(),
-            repository: None,
         };
 
         assert_eq!(true, repo1 == repo2);
