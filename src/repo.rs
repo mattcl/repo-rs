@@ -122,7 +122,6 @@ impl Repo {
     fn repository(&self) -> Result<Repository> {
         Ok(Repository::discover(&self.path)?)
     }
-
 }
 
 impl PartialEq for Repo {
@@ -181,7 +180,7 @@ impl RepoBuilder {
         let key = match self.key {
             Some(k) => k,
             // attempt to derive key from repo path
-            None => path.file_name().unwrap().to_str().unwrap().to_owned()
+            None => path.file_name().unwrap().to_str().unwrap().to_owned(),
         };
 
         let remote = match self.remote {
@@ -198,7 +197,7 @@ impl RepoBuilder {
         let branch = match self.branch {
             Some(b) => b,
             // attempt to track the current branch if one was not specified
-            None => current_branch(&key, &repository)?
+            None => current_branch(&key, &repository)?,
         };
 
         Ok(Repo {

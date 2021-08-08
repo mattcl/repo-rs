@@ -155,7 +155,10 @@ impl<T> UnwrapOrExit<T> for Option<T> {
     }
 }
 
-impl<T, E> UnwrapOrExit<T> for std::result::Result<T, E> where E: Display {
+impl<T, E> UnwrapOrExit<T> for std::result::Result<T, E>
+where
+    E: Display,
+{
     fn unwrap_or_else<F>(self, f: F) -> T
     where
         F: FnOnce() -> T,

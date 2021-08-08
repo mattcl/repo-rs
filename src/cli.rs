@@ -117,9 +117,7 @@ pub fn get_matches<'a>(
                 .about("run a command in all tracked repos")
                 .arg(
                     Arg::with_name("quiet")
-                        .help(
-                            "Ignore failures",
-                        )
+                        .help("Ignore failures")
                         .short("q")
                         .long("quiet"),
                 )

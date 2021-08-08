@@ -1,9 +1,9 @@
 use futures::{future::join_all, stream::StreamExt};
 use indicatif::{MultiProgress, ProgressBar};
-use tokio::task::{JoinError, JoinHandle};
-use std::{env, thread};
 use std::path::Path;
 use std::process::Output;
+use std::{env, thread};
+use tokio::task::{JoinError, JoinHandle};
 
 use clap::ArgMatches;
 use colored::*;
@@ -56,7 +56,8 @@ fn collect_output(header: String, result: Output) -> Option<String> {
 }
 
 async fn join_and_handle_errors(message: &str, tasks: Vec<JoinHandle<Result<()>>>) {
-    let results: Vec<_> = join_all(tasks).await
+    let results: Vec<_> = join_all(tasks)
+        .await
         .into_iter()
         .collect::<std::result::Result<Vec<Result<()>>, JoinError>>()
         .unwrap_or_exit("Error with runtime");
@@ -134,25 +135,33 @@ async fn pull(config: &Config, allow_stash: bool) {
         .repos
         .iter()
         .map(|(key, repo)| {
-            let s = key.clone();
+            let s = key.clone().white().bold();
             let repo = repo.clone();
 
             let pb = m.add(ProgressBar::new_spinner());
             pb.enable_steady_tick(120);
-            pb.set_message(format!("Updating {}", s.white().bold()));
+            pb.set_message(format!("Updating {}", s));
 
             tokio::spawn(async move {
                 match repo.update_repo(allow_stash).await {
-                    Ok(_) => {
-                        pb.finish_with_message(format!("Updated {}", s.green().bold()));
+                    Ok(output) => {
+                        let status = match String::from_utf8(output.stdout)
+                            .expect("Invalid Utf-8 in output")
+                            .find("Already up to date")
+                        {
+                            Some(_) => "Unchanged".yellow(),
+                            None => "  Updated".green(),
+                        };
+
+                        pb.finish_with_message(format!("{} {}", status, s));
                         Ok(())
-                    },
+                    }
                     Err(e) => {
-                        pb.finish_with_message(format!("Failed {} {}", s.red().bold(), e));
+                        pb.finish_with_message(format!("{} {} {}","   Failed".red().bold(), s, e));
                         Err(e)
                     }
                 }
-           })
+            })
         })
         .collect();
     // we need this to progress and it isn't built to work with futures
