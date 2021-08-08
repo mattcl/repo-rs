@@ -1,6 +1,7 @@
 use futures::{future::join_all, stream::StreamExt};
+use indicatif::{MultiProgress, ProgressBar};
 use tokio::task::{JoinError, JoinHandle};
-use std::env;
+use std::{env, thread};
 use std::path::Path;
 use std::process::Output;
 
@@ -125,23 +126,40 @@ fn untrack(config: &mut Config, subcmd: &ArgMatches, config_file: &Path) {
 
 #[tokio::main]
 async fn pull(config: &Config, allow_stash: bool) {
+    let m = MultiProgress::new();
+
     println!("Attempting to update {}", pluralize_repos(config));
 
     let tasks: Vec<_> = config
         .repos
         .iter()
         .map(|(key, repo)| {
+            let s = key.clone();
             let repo = repo.clone();
-            let s = format!("Updated {}", &key.white().bold());
+
+            let pb = m.add(ProgressBar::new_spinner());
+            pb.enable_steady_tick(120);
+            pb.set_message(format!("Updating {}", s.white().bold()));
+
             tokio::spawn(async move {
-                repo.update_repo(allow_stash).await?;
-                println!("{}", s);
-                Ok(())
+                match repo.update_repo(allow_stash).await {
+                    Ok(_) => {
+                        pb.finish_with_message(format!("Updated {}", s.green().bold()));
+                        Ok(())
+                    },
+                    Err(e) => {
+                        pb.finish_with_message(format!("Failed {} {}", s.red().bold(), e));
+                        Err(e)
+                    }
+                }
            })
         })
         .collect();
+    // we need this to progress and it isn't built to work with futures
+    let multi = thread::spawn(move || m.join());
 
     join_and_handle_errors("Not all repos could be updated", tasks).await;
+    multi.join().unwrap().unwrap()
 }
 
 #[tokio::main]
