@@ -132,8 +132,8 @@ async fn pull(config: &Config, allow_stash: bool) {
     println!("Attempting to update {}", pluralize_repos(config));
 
     let tasks: Vec<_> = config
-        .repos
-        .iter()
+        .repos_sorted()
+        .into_iter()
         .map(|(key, repo)| {
             let s = key.clone().white().bold();
             let repo = repo.clone();

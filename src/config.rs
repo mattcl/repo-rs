@@ -36,12 +36,22 @@ impl Config {
         }
     }
 
+    pub fn repos_sorted(&self) -> Vec<(&String, &Repo)> {
+        let mut ordered = self.repos
+            .iter()
+            .collect::<Vec<_>>();
+
+        ordered.sort_by(|a, b| a.0.cmp(b.0));
+
+        ordered
+    }
+
     pub fn list(&self) {
         let mut table = Table::new();
         let format = format::FormatBuilder::new().padding(1, 1).build();
 
         table.set_format(format);
-        for (_, repo) in &self.repos {
+        for (_, repo) in self.repos_sorted() {
             table.add_row(row![FW->&repo.key, &repo.path]);
         }
 
