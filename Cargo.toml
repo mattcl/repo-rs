@@ -18,9 +18,7 @@ colored = "2"
 dirs = "3"
 futures = "0.3"
 git2 = "0.13"
-# Until my patch is merged, we hve to fetch from gitlab
-# github_v3 = "0.3.2"
-github_v3 = { git = "https://gitlab.com/mchunlum/crates.rs.git", branch = "fixing-git" }
+github_v3 = "*"
 indicatif = "0.16"
 prettytable-rs = "0.8"
 serde = "1"

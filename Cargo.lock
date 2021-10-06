@@ -519,8 +519,9 @@ dependencies = [
 
 [[package]]
 name = "github_v3"
-version = "0.3.4"
-source = "git+https://gitlab.com/mchunlum/crates.rs.git?branch=fixing-git#3ffd0027f1933841b0e5306b8f78c0e35be57fe0"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55c599ee906c478864675c132a8fd80e36bd926ef644b00f3e7fb8c15a71d487"
 dependencies = [
  "async-stream",
  "futures",
@@ -1209,7 +1210,7 @@ dependencies = [
 
 [[package]]
 name = "repo-rs"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "colored",
