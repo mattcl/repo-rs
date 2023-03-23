@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use prettytable::{cell, format, row, Table};
+use prettytable::{format, row, Table};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::error::Result;
@@ -37,9 +37,7 @@ impl Config {
     }
 
     pub fn repos_sorted(&self) -> Vec<(&String, &Repo)> {
-        let mut ordered = self.repos
-            .iter()
-            .collect::<Vec<_>>();
+        let mut ordered = self.repos.iter().collect::<Vec<_>>();
 
         ordered.sort_by(|a, b| a.0.cmp(b.0));
 
@@ -55,7 +53,7 @@ impl Config {
             table.add_row(row![FW->&repo.key, &repo.path]);
         }
 
-        table.print_tty(true);
+        table.print_tty(true).expect("Failed to render table");
     }
 
     pub fn add(&mut self, candidate: Repo) {

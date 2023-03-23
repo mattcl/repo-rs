@@ -8,6 +8,7 @@ pub fn get_matches<'a>(
         .about("Manage multiple git repositories")
         .author(crate_authors!())
         .version(crate_version!())
+        .setting(AppSettings::SubcommandRequiredElseHelp)
         .global_setting(AppSettings::ColorAuto)
         .global_setting(AppSettings::ColoredHelp)
         .arg(

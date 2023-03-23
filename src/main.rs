@@ -157,7 +157,7 @@ async fn pull(config: &Config, allow_stash: bool) {
                         Ok(())
                     }
                     Err(e) => {
-                        pb.finish_with_message(format!("{} {} {}","   Failed".red().bold(), s, e));
+                        pb.finish_with_message(format!("{} {} {}", "   Failed".red().bold(), s, e));
                         Err(e)
                     }
                 }
