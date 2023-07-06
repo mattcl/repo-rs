@@ -14,6 +14,7 @@ pub struct Repo {
 }
 
 impl Repo {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(path: &str) -> RepoBuilder {
         RepoBuilder::new(path)
     }
@@ -164,7 +165,7 @@ impl RepoBuilder {
         let path = Path::new(&p);
 
         // attempt to instantiate the repository object
-        let repository = Repository::discover(&path)?;
+        let repository = Repository::discover(path)?;
 
         {
             let real_path = match repository.workdir() {

@@ -1,8 +1,5 @@
 use std::{env, fmt::Display};
 
-use clap;
-use git2;
-use github_v3;
 use serde_json::error::Error as SerdeError;
 
 /// RepoRsError enumerates all possible errors returned by this library

@@ -37,17 +37,15 @@ fn collect_output(header: String, result: Output) -> Option<String> {
         let mut output = header;
 
         if !result.stdout.is_empty() {
-            output.push_str("\n");
+            output.push('\n');
             output.push_str(
                 &String::from_utf8(result.stdout.clone()).expect("Output is not valid utf-8"),
             );
         }
 
         if !result.stderr.is_empty() {
-            output.push_str("\n");
-            output.push_str(
-                &String::from_utf8(result.stderr.clone()).expect("Output is not valid utf-8"),
-            );
+            output.push('\n');
+            output.push_str(&String::from_utf8(result.stderr).expect("Output is not valid utf-8"));
         }
 
         return Some(output);
@@ -117,7 +115,7 @@ fn track(config: &mut Config, subcmd: &ArgMatches, config_file: &Path) {
 fn untrack(config: &mut Config, subcmd: &ArgMatches, config_file: &Path) {
     // The following two lines are safe because of the way clap validates params
     let key = subcmd.value_of("key").unwrap();
-    if config.remove(&key) {
+    if config.remove(key) {
         println!("Stopped tracking {}", key.white().bold());
         config
             .save(config_file)
@@ -276,7 +274,7 @@ fn main() {
     let matches = cli::get_matches(default_config_path, default_track_path);
 
     let config_file = Path::new(matches.value_of("config").unwrap());
-    let mut config = Config::new(&config_file).unwrap_or_exit("Error loading config");
+    let mut config = Config::new(config_file).unwrap_or_exit("Error loading config");
 
     match matches.subcommand() {
         ("list", Some(_)) => config.list(),

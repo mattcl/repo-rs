@@ -1,0 +1,4 @@
+lib:
+  name: repo-rs
+  repo:
+    uri: https://github.com/mattcl/repo-rs.git
