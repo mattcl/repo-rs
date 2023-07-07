@@ -6,7 +6,8 @@ if command -v apk > /dev/null; then
         openssl-dev
 else
     apt-get update && apt-get install -y \
-        libssl-dev
+        libssl-dev \
+        pkg-config
 fi
 
 # We need to work around a current limitaiton in `cargo msrv` where it can't

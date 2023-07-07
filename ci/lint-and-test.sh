@@ -6,7 +6,8 @@ if command -v apk > /dev/null; then
         openssl-dev
 else
     apt-get update && apt-get install -y \
-        libssl-dev
+        libssl-dev \
+        pkg-config
 fi
 
 if [ "$LINT" -eq 1 ]; then
