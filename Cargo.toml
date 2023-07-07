@@ -18,7 +18,7 @@ clap = "=2.33"
 colored = "2"
 dirs = "5"
 futures = "0.3.19"
-git2 = { version = "0.16", default_features = false, features = ["https", "vendored-libgit2", "vendored-openssl"] }
+git2 = { version = "0.16", default_features = false, features = ["vendored-libgit2", "vendored-openssl"] }
 github_v3 = "1.0.3"
 indicatif = "0.16"
 prettytable-rs = "0.10"
