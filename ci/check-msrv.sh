@@ -5,7 +5,7 @@ if command -v apk > /dev/null; then
     apk add openssl \
         openssl-dev
 else
-    apt-get install -y \
+    apt-get update && apt-get install -y \
         libssl-dev
 fi
 
