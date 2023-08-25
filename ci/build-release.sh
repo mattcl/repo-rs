@@ -3,7 +3,8 @@ set -ex
 
 if command -v apk > /dev/null; then
     apk add openssl \
-        openssl-dev
+        openssl-dev \
+        pkgconfig
 else
     apt-get update && apt-get install -y \
         libssl-dev \
