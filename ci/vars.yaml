@@ -3,12 +3,3 @@ bin:
   bin-name: repo-rs
   repo:
     uri: https://github.com/mattcl/repo-rs.git
-
-lint-and-test:
-  script-path: ci/lint-and-test.sh
-
-msrv:
-  script-path: ci/check-msrv.sh
-
-build-release:
-  script-path: repo/ci/build-release.sh
