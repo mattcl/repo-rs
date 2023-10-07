@@ -2,13 +2,12 @@
 set -ex
 
 if command -v apk > /dev/null; then
-    apk add openssl \
-        openssl-dev \
-        pkgconfig
+    apk add make \
+        perl
 else
     apt-get update && apt-get install -y \
-        libssl-dev \
-        pkg-config
+        make \
+        perl
 fi
 
 # We need to work around a current limitaiton in `cargo msrv` where it can't
