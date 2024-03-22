@@ -1,6 +1,6 @@
 [package]
 name = "repo-rs"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Matt Chun-Lum <matt@questionable.engineering>"]
 edition = "2018"
 rust-version = "1.65.0"
