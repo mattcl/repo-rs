@@ -3,7 +3,7 @@ name = "repo-rs"
 version = "0.2.3"
 authors = ["Matt Chun-Lum <matt@questionable.engineering>"]
 edition = "2018"
-rust-version = "1.65.0"
+rust-version = "1.70.0"
 
 [[bin]]
 bench = false
@@ -18,7 +18,7 @@ clap = "=2.33"
 colored = "2"
 dirs = "5"
 futures = "0.3.19"
-git2 = { version = "0.17", features = ["vendored-openssl"] }
+git2 = { version = "0.18", features = ["vendored-openssl"] }
 github_v3 = "1.0.3"
 indicatif = "0.16"
 prettytable-rs = "0.10"
