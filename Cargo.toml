@@ -3,7 +3,7 @@ name = "repo-rs"
 version = "0.2.3"
 authors = ["Matt Chun-Lum <matt@questionable.engineering>"]
 edition = "2018"
-rust-version = "1.74"
+rust-version = "1.74.1"
 
 [[bin]]
 bench = false
